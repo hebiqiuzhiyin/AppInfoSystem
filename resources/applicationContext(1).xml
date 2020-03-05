@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"  
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+        xmlns:aop="http://www.springframework.org/schema/aop"  
+        xmlns:p="http://www.springframework.org/schema/p"  
+        xmlns:tx="http://www.springframework.org/schema/tx"  
+        xmlns:context="http://www.springframework.org/schema/context"  
+        xsi:schemaLocation="   
+            http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd   
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd   
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd 
+            http://www.springframework.org/schema/context 
+            http://www.springframework.org/schema/context/spring-context.xsd">  
+	
+	<!-- 包扫描配置 -->
+	<context:component-scan base-package="cn.appsys.service"/>
+	<!-- 读取数据库配置文件 -->
+	<context:property-placeholder location="classpath:datapase.properties"/>
+	
+	<!-- 配置 数据源 -->
+	<!-- JNDI获取数据库配置文件 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" 
+		destroy-method="close" scope="singleton">
+			<property name="driverClassName" value="${driver}"/>
+			<property name="url" value="${url}"/>
+			<property name="username" value="${user}"/>
+			<property name="password" value="${password}"/>
+			<property name="initialSize" value="${initialSize}"/>
+			<property name="maxActive" value="${maxActive}"/>
+			<property name="maxIdle" value="${maxIdle}"/>
+			<property name="minIdle" value="${minIdle}"/>
+			<property name="maxWait" value="${maxWait}"/>
+			<property name="removeAbandoneTimeout" value="${removeAbandoneTimeout}"/>
+			<property name="removeAbandone" value="${removeAbandone}"/>
+			<!-- sql心跳 -->
+			<property name="testWhileIdle" value="${true}"/>
+			<property name="testOnBorrow" value="${false}"/>
+			<property name="testOnReturn" value="${false}"/>
+			<property name="validationQery" value="${select 1}"/>
+			<property name="timeBetweenEvictionRunsMillis" value="60000"/>
+			<property name="numTestsPerEvictionRun" value="${maxActive}"/>
+		</bean>
+		<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+			<property name="dataSource" ref="dataSource"/>
+			<property name="configLocation" value="classpath:mybatis-config.xml"/>
+		</bean>
+		
+		<!-- 配置事务管理 -->
+		<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+			<property name="dataSource" ref="dataSource"/>
+		</bean>
+		
+		<!-- 配置Aop动态事务 -->
+		<!-- AOP事务处理开始 -->
+		<aop:aspectj-autoproxy/>
+		<aop:config proxy-target-class="true">
+			<aop:pointcut expression="execution(**cn.smbms.service..*(..))" id="transService"/>
+			<aop:advisor pointcut-ref="transService" advice-ref="txAdvice"/>
+		</aop:config>
+		<tx:advice id="txAdvice" transaction-manager="transactionManager">
+			<tx:attributes>
+				<tx:method name="smbms*" propagation="REQUIRED" rollback-for="EException"/>
+			</tx:attributes>
+		</tx:advice>
+		<!-- AOP事务处理结束 -->
+		
+		<!-- 配置自动访问层映射 -->
+		<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+			<property name="basePackage" value="cn.appsys.dao"/>
+		</bean>
+		
+		<!-- 全局异常配置 -->
+		<bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+			<property name="exceptionMappings">
+				<props>
+					<prop key="java.lang.RuntimeException">403</prop>
+				</props>
+			</property>
+		
+		</bean>
+</beans>
